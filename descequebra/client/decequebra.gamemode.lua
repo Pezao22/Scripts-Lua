@@ -1,11 +1,12 @@
 -----------------------------------------------------------------------------------------------------------------------------------------
--- CONNECTIONS
+-- VRP
 -----------------------------------------------------------------------------------------------------------------------------------------
-Tunnel = module("vrp","lib/Tunnel")
-Proxy = module("vrp","lib/Proxy")
-
-src = {}
-Tunnel.bindInterface("descequebra",src)
+local Tunnel = module("vrp","lib/Tunnel")
+local Proxy = module("vrp","lib/Proxy")
+vRP = Proxy.getInterface("vRP")
+-----------------------------------------------------------------------------------------------------------------------------------------
+-- CONNECTION
+-----------------------------------------------------------------------------------------------------------------------------------------
 serverAPI = Tunnel.getInterface("descequebra")
 -----------------------------------------------------------------------------------------------------------------------------------------
 -- VARIABLES
@@ -33,8 +34,103 @@ local Descequebra = {
         {286.11, -861.26, 29.32},
         {122.49, -799.43, 31.37},
         {-35.64, -948.64, 29.42}
-    }
-}
+    },
+    weaponList = {
+        -- ["player"] = {
+             ["WEAPON_ASSAULTRIFLE_MK2"] = {
+                 ["attachments"] = {
+                     "COMPONENT_AT_AR_AFGRIP_02",
+                     "COMPONENT_AT_AR_FLSH",
+                     "COMPONENT_AT_MUZZLE_04",
+                     "COMPONENT_AT_SIGHTS",    
+                     "COMPONENT_AT_SCOPE_MEDIUM_MK2"
+                 },
+             },
+             ["WEAPON_ASSAULTRIFLE"] = {
+                 ["attachments"] = {
+                     "COMPONENT_AT_AR_AFGRIP",
+                     "COMPONENT_AT_AR_FLSH",
+                     "COMPONENT_AT_SIGHTS",
+                     "COMPONENT_AT_SCOPE_MACRO"
+                 },
+             },
+             ["WEAPON_CARBINERIFLE"] = {
+                 ["attachments"] = {
+                     "COMPONENT_AT_AR_AFGRIP",
+                     "COMPONENT_AT_AR_FLSH",
+                     "COMPONENT_AT_SCOPE_MEDIUM"
+                 },
+             },
+             ["-86904375"] = { -- Carbine Rifle Mk2
+                 ["attachments"] = {
+                     "COMPONENT_AT_AR_AFGRIP_02", 
+                     "COMPONENT_AT_AR_FLSH",
+                     "COMPONENT_AT_MUZZLE_04",  
+                     "COMPONENT_AT_SCOPE_MEDIUM_MK2", 
+                     "COMPONENT_AT_SIGHTS"
+                 },
+             },
+             ["WEAPON_SPECIALCARBINE"] = {
+                 ["attachments"] = {
+                     "COMPONENT_AT_AR_AFGRIP",
+                     "COMPONENT_AT_AR_FLSH",
+                     "COMPONENT_AT_SCOPE_MEDIUM"
+                 },
+             },
+             ["WEAPON_SPECIALCARBINE_MK2"] = {
+                 ["attachments"] = {
+                     "COMPONENT_AT_AR_AFGRIP_02",
+                     "COMPONENT_AT_AR_FLSH",
+                     "COMPONENT_AT_MUZZLE_04",
+                     "COMPONENT_AT_SCOPE_MEDIUM_MK2"
+                 },
+             },
+             ["WEAPON_MACHINEPISTOL"] = {
+                 ["attachments"] = {
+                     "COMPONENT_MACHINEPISTOL_CLIP_02"
+                 },
+             },
+             ["WEAPON_SMG"] = {
+                 ["attachments"] = {
+                     "COMPONENT_AT_AR_FLSH",
+                     "COMPONENT_AT_SCOPE_MACRO_02"
+                 },
+             },
+             ["WEAPON_SMG_MK2"] = {
+                 ["attachments"] = {
+                     "COMPONENT_AT_AR_FLSH",
+                     "COMPONENT_AT_SCOPE_SMALL_SMG_MK2",
+                     "COMPONENT_AT_SIGHTS_SMG"
+                 },
+             },
+             ["WEAPON_PISTOL_MK2"] = {
+                 ["attachments"] = {
+                     "COMPONENT_AT_PI_FLSH_02",
+                     "COMPONENT_AT_PI_COMP",
+                     "COMPONENT_AT_PI_RAIL"
+                 },
+             },
+             ["WEAPON_COMBATPISTOL"] = {
+                 ["attachments"] = {
+                     "COMPONENT_AT_PI_FLSH",
+                     "COMPONENT_COMBATPISTOL_CLIP_02"
+                 },
+             },
+             ["WEAPON_APPISTOL"] = {
+                 ["attachments"] = {
+                     "COMPONENT_AT_PI_FLSH",
+                     "COMPONENT_APPISTOL_CLIP_02"
+                 },
+             },
+             ["WEAPON_SNSPISTOL"] = {
+                 ["attachments"] = {},
+             },
+             ["WEAPON_HEAVYPISTOL"] = {
+                 ["attachments"] = {},
+             },
+       --  },	
+     },
+ }
 
 function spawnVeh()
     local peds = PlayerPedId()
@@ -90,7 +186,7 @@ function startDeceQuebra(status)
     Citizen.CreateThread(function()
         while status do
             local ped = PlayerPedId()
-            local timeDistance = 200
+            local timeDistance = 500
             if Descequebra["inDescequebra"] then
                 if not parseInt(myDimension) == 730000 then
                     Descequebra["inDescequebra"] = false
@@ -187,14 +283,21 @@ AddEventHandler("decequebra:Entrar", function()
             type = "inform",
             text = "Você entrou na dimensão de Descequebra"
         })
-        TriggerEvent("clearWeapons")
+        --TriggerEvent("clearWeapons")
+        RemoveAllPedWeapons(ped,true)
         serverAPI.dimenssionSet()
 
         local spawnPoints = math.random(#Descequebra["spawns"])
-        SetEntityCoords(ped, Descequebra["spawns"][spawnPoints][1], Descequebra["spawns"][spawnPoints][2],
-            Descequebra["spawns"][spawnPoints][3])
+        SetEntityCoords(ped, Descequebra["spawns"][spawnPoints][1], Descequebra["spawns"][spawnPoints][2],Descequebra["spawns"][spawnPoints][3])
         spawnVeh()
-        ExecuteCommand('armas')
+
+        for k,v in pairs(Descequebra["weaponList"]) do
+			--GiveWeaponToPed(playerPed,parseInt(k),-1,true)
+			vRP.giveWeapons({[k] = { ammo = -1 }})
+			for _,v2 in pairs(v.attachments) do
+				GiveWeaponComponentToPed(playerPed,parseInt(k),GetHashKey(v2))
+			end
+		end
     end
 end)
 
@@ -203,10 +306,11 @@ end)
 -----------------------------------------------------------------------------------------------------------------------------------------
 RegisterNetEvent("descequebra:Quit")
 AddEventHandler("descequebra:Quit", function()
+    local ped = PlayerPedId()
     if Descequebra["inDescequebra"] then
         Descequebra["inDescequebra"] = false
         startDeceQuebra(false)
-        -- print('saiu')
+        RemoveAllPedWeapons(ped,true)
     end
 end)
 
